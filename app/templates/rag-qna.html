@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>watsonx INCUBATION | IBM Indonesia</title>
+    <!--link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"-->
+    <link rel="icon" type="image/x-icon" href="https://cdn.iconscout.com/icon/free/png-256/free-bee-189-439428.png?f=webp">
+    <link rel="stylesheet" href="https://1.www.s81c.com/common/carbon/plex/sans.css" />
+    <style>
+      body {
+        font-family: IBM Plex Sans,Helvetica Neue,Arial,sans-serif;
+      }
+
+      .content-wd,
+      .content-qna {
+        display: none;
+        margin: 5%;
+        margin-left: 20%;
+        width: 70%; 
+      }
+
+      .loading-container {
+        position: relative;
+        padding: 1rem;
+        display: flex;
+        align-items: left;
+        justify-content: left;
+        width: 50%;
+      }
+
+      #fileInput {
+        display: none;
+      }
+
+      #fileList {
+        margin-top: 20px;
+      }
+      
+
+    </style>
+        <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.4.0/ui-shell.min.js"></script>
+        <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.4.0/tile.min.js"></script>
+        <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.4.0/slug.min.js"></script>
+        <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.4.0/combo-box.min.js"></script>
+        <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.4.0/accordion.min.js"></script>
+        <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.4.0/button.min.js"></script>
+        <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.4.0/loading.min.js"></script>
+        <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.8.0/file-uploader.min.js"></script>
+        <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.8.0/textarea.min.js"></script>
+        <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.8.0/progress-bar.min.js"></script>
+        <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.8.0/inline-loading.min.js"></script>
+        <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.8.0/toggle.min.js"></script>
+        <script type="module" src="https://1.www.s81c.com/common/carbon/web-components/version/v2.8.0/select.min.js"></script>
+
+        
+       
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const contentWD = document.querySelector('.content-wd');
+            const contentQNA = document.querySelector('.content-qna');
+            const wdLink = document.querySelector('cds-side-nav-link:nth-child(1)');
+            const qnaLink = document.querySelector('cds-side-nav-link:nth-child(2)');
+            const submitButton = document.querySelector('.submit-button');
+            const clearButton = document.querySelector('.clear-button');
+            const chatbox = document.querySelector('cds-textarea');
+            const submittedTextContainer = document.querySelector('.submitted-text');
+            const loadingContainer = document.querySelector('.loading-container');
+            const toggleStream = document.querySelector('.toggle-stream');
+            const toggleUpload = document.querySelector('.toggle-upload');
+            const dbSelect = document.querySelector('.db-select');
+            const llmSelect = document.querySelector('.llm-select');
+            let selectedDatabase = ''; 
+            let selectedLLM = ''; 
+            let useStreamingEndpoint = false;
+            let useWD = false // Default to using /qna_wx endpoint
+
+            wdLink.addEventListener('click', function() {
+                contentWD.style.display = 'block';
+                contentQNA.style.display = 'none';
+            });
+
+            qnaLink.addEventListener('click', function() {
+                contentWD.style.display = 'none';
+                contentQNA.style.display = 'block';
+            });
+
+            dbSelect.addEventListener('cds-select-selected', function(event) {
+                selectedDatabase = event.detail.value;
+                console.log(selectedDatabase);
+            });
+
+            llmSelect.addEventListener('cds-select-selected', function(event) {
+              selectedLLM = event.detail.value;
+                console.log(selectedLLM);
+            });
+
+            submitButton.addEventListener('click', function() {
+                const submittedText = chatbox.value.trim();
+                if (submittedText !== '') {
+                    loadingContainer.style.display = 'block'; // Show loading spinner
+                    const submittedTextElement = document.createElement('p');
+                    submittedTextElement.textContent = 'Question: ' + submittedText;
+                    submittedTextContainer.appendChild(submittedTextElement);
+                    chatbox.value = ''; // Clearing the chatbox after submission
+
+                    const endpoint = useStreamingEndpoint ? '/qna_wx_stream' : '/qna_wx';
+                    console.log(endpoint)
+
+                    fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ user_question: submittedText, db:  selectedDatabase, llm: selectedLLM})
+                    })
+                    .then(response => {
+                        if (useStreamingEndpoint) {
+                          const reader = response.body.getReader();
+                          let result = ''; 
+                        
+                          let answerTextElementStream = submittedTextContainer.querySelector('.answer-text-stream');
+                         
+                          answerTextElementStream = document.createElement('p');
+                          answerTextElementStream.classList.add('answer-text-stream');
+                          submittedTextContainer.appendChild(answerTextElementStream);
+                          
+
+                          reader.read().then(function processText({ done, value }) {
+                              if (done) {
+                                  loadingContainer.style.display = 'none';
+                                
+                                  return;
+                              }
+                              const chunk = new TextDecoder('utf-8').decode(value);
+                              
+                              result += chunk
+                              answerTextElementStream.textContent = `Answer: ${result}`;
+                              
+                              submittedTextContainer.scrollTop = submittedTextContainer.scrollHeight;
+                              reader.read().then(processText);
+                          });
+                        } else {
+                            return response.json();
+                        }
+                    })
+                    .then(data => {
+                        if (!useStreamingEndpoint) {
+                            const answer = data.answer;
+                            const etaRetrieve = parseFloat(data.eta_retrieve).toFixed(1);
+                            const etaWatsonX = parseFloat(data.eta_wxai).toFixed(1);
+
+                            const answerTextElement = document.createElement('p');
+                            answerTextElement.textContent = `Answer: ${answer}`;
+                            answerTextElement.classList.add('answer-text'); // Add a class for identification
+
+                            const additionalInfoElement = document.createElement('p');
+                            console.log(selectedDatabase);
+                            if (selectedDatabase === 'wd'){
+                            additionalInfoElement.innerHTML = `<span style="font-size: smaller; font-style: italic; display: block;">(Watson Discovery took ${etaRetrieve} sec to retrieve information, WatsonX.AI took ${etaWatsonX} sec to generate the answer)</span>`;
+                            } else if (selectedDatabase === 'milvus'){
+                            additionalInfoElement.innerHTML = `<span style="font-size: smaller; font-style: italic; display: block;">(Milvus took ${etaRetrieve} sec to retrieve information, WatsonX.AI took ${etaWatsonX} sec to generate the answer)</span>`;  
+                            }
+
+                            submittedTextContainer.appendChild(answerTextElement);
+                            submittedTextContainer.appendChild(additionalInfoElement);
+                        }
+                        loadingContainer.style.display = 'none'; // Hide loading spinner after receiving response
+                    })
+                    .catch(error => console.error('Error:', error));
+                }
+            });
+
+
+            clearButton.addEventListener('click', function() {
+                // Remove all child elements from the container
+                while (submittedTextContainer.firstChild) {
+                    submittedTextContainer.removeChild(submittedTextContainer.firstChild);
+                }
+            });
+
+            toggleStream.addEventListener('cds-toggle-changed', function(event) {
+                useStreamingEndpoint = event.target.checked; // Update the endpoint based on toggle state
+            });
+
+            toggleUpload.addEventListener('cds-toggle-changed', function(event) {
+                useWD = event.target.checked; // Update the endpoint based on toggle state
+                console.log(useWD);
+            });
+
+
+            // Upload script
+            document.getElementById('uploadButton').addEventListener('click', function() {
+            document.getElementById('fileInput').click();
+          });
+
+          document.getElementById('fileInput').addEventListener('change', function() {
+            const files = this.files;
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = ''; // Clear previous list
+
+            Array.from(this.files).forEach(function(file) {
+              displayFileName(file);
+              uploadFile(file);
+            });
+          });
+
+          function displayFileName(file) {
+            const fileList = document.getElementById('fileList');
+            const paragraph = document.createElement('p');
+            paragraph.textContent = file.name;
+            fileList.appendChild(paragraph);
+          }
+
+          function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            if(useWD){
+              formData.append('storage', "wd");
+            }else{
+              formData.append('storage', "milvus");
+            }
+
+            console.log(useWD);
+            console.log(formData)
+            fetch('/upload', {
+              method: 'POST',
+              body: formData
+            })
+            .then(response => {
+              if (!response.ok) {
+                throw new Error('Failed to upload file');
+              }
+              console.log(file.name + ' uploaded successfully');
+              updateFileStatus(file.name);
+            })
+            .catch(error => {
+              console.error('Error uploading file:', error);
+            });
+          }
+
+          function updateFileStatus(fileName) {
+            const paragraphs = document.querySelectorAll('#fileList p');
+            paragraphs.forEach(paragraph => {
+              if (paragraph.textContent === fileName) {
+                paragraph.textContent += ' (uploaded)';
+              }
+            });
+          }
+
+
+        });
+
+
+
+
+
+        </script>
+
+</head>
+<body>
+  <!-- NAVBAR MENU -->
+    <cds-header aria-label="IBM Platform Name">
+        <cds-header-menu-button
+          button-label-active="Close menu"
+          button-label-inactive="Open menu"></cds-header-menu-button>
+        <cds-header-name href="/" prefix="IBM">watson<span style="color:#0f62fe;">x</span></cds-header-name>
+        <cds-header-nav menu-bar-label="IBM [Platform]">
+          <cds-header-nav-item href="/rag">RAG</cds-header-nav-item>
+        </cds-header-nav>
+    </cds-header>
+
+    
+    <!--SIDE NAVIGATION-->
+      <cds-side-nav aria-label="Side navigation" expanded>
+        <cds-side-nav-items>
+          <cds-side-nav-link href="javascript:void(0)">Upload to Milvus</cds-side-nav-link>
+          <cds-side-nav-link href="javascript:void(0)">Chat Q&A</cds-side-nav-link>
+        </cds-side-nav-items>
+    </cds-side-nav>
+
+    <!--HTML element to upload file to Watson Discovery-->
+    <div class="content-wd">
+      <h1>Upload your document to knowledge repository</h1>
+
+      <input type="file" id="fileInput" accept=".txt, .pdf, .doc, .docx" multiple>
+      <cds-button id="uploadButton">Upload File</cds-button>
+      <cds-toggle class="toggle-upload"
+        size="sm"
+        label-a="Watson Discovery"
+        label-text="Select knowledge repository"
+        label-b="milvus"></cds-toggle>
+      <div id="fileList"></div>
+    </div>
+    
+
+    <!--HTML element to upload file to QnA-->
+    <div class="content-qna"> 
+      <h1>Ask Your HR Companion</h1>
+      <cds-select class="db-select"
+      helper-text="knowledge repository"
+      label-text="Retrieve from"
+      placeholder="Select"
+      inline="True">
+        <cds-select-item value="wd">Watson Discovery</cds-select-item>
+        <cds-select-item value="milvus">Milvus</cds-select-item>
+      </cds-select>
+      <cds-select class="llm-select"
+      helper-text="for Generation"
+      label-text="Use LLM"
+      placeholder="Select"
+      inline="True">
+        <cds-select-item value="meta-llama/llama-3-8b-instruct">meta-llama/llama-3-8b-instruct</cds-select-item>
+        <cds-select-item value="meta-llama/llama-3-70b-instruct">meta-llama/llama-3-70b-instruct</cds-select-item>
+        <cds-select-item value="ibm/granite-20b-multilingual">ibm/granite-20b-multilingual</cds-select-item>
+        <cds-select-item value="mistralai/mixtral-8x7b-instruct-v01">mistralai/mixtral-8x7b-instruct-v01</cds-select-item>
+      </cds-select>
+
+
+      <cds-tile class="submitted-text" ></cds-tile>
+      <cds-progress-bar class="loading-container" style="display: none;"
+        label="Wait for a moment..."
+        helper-text="Getting watsonx.ai to answer your question"
+        status="active"></cds-progress-bar>
+
+
+      <cds-toggle class="toggle-stream"
+        size="sm"
+        label-a="On"
+        label-text="Activate Streaming"
+        label-b="Off"></cds-toggle>
+      <cds-textarea placeholder="Chatbox" rows="5" cols="70">
+        <span slot="label-text">Please put your question here</span>
+        <span slot="helper-text">Powered by watsonx.ai</span>
+        <span slot="validity-message">Something isn't right</span>
+      </cds-textarea>
+      <cds-button-set>
+        <cds-button class="submit-button" href="#"> Submit </cds-button>
+        <cds-button class="clear-button" href="#"> Clear </cds-button>
+      </cds-button-set>
+    </div>
+
+    
+</body>
+</html>
