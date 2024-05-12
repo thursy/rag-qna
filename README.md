@@ -35,13 +35,13 @@ Download dokumet tersebut ke local computer anda, dan upload ke webapp.
 ## Requirements 🚀
 ### Teknologi yang digunakan
 Untuk membangun webapp ini beberapa SDK digunakan untuk memungkinkan interaksi dengan teknologi atau service yang diperlukan.
-1. [watsonx.ai python SDK]()
-2. [Milvus python SDK]()
-3. [Watson Discovery python SDK]()
+1. [watsonx.ai python SDK](https://ibm.github.io/watsonx-ai-python-sdk/)
+2. [Milvus python SDK](https://milvus.io/api-reference/pymilvus/v2.4.x/About.md)
+3. [Watson Discovery python SDK](https://github.com/watson-developer-cloud/python-sdk/blob/master/ibm_watson/discovery_v2.py)
 
 Selain menggunakan SDK, kita sebenarnya juga bisa menggunakan API. Berikut adalah link dokumentasi untuk beberapa API yang mungkin berguna untuk anda.
-- [watsonx.ai API Documentation]()
-- [Watson Discovery API Documentation]()
+- [watsonx.ai API Documentation](https://cloud.ibm.com/apidocs/watsonx-ai)
+- [Watson Discovery API Documentation](https://cloud.ibm.com/apidocs/discovery-data?code=python)
   
 ### Credentials yang harus di sediakan
 Agar web application ini dapat dijalankan dengan baik di local computer ataupun di docker container anda harus menyiapkan credentials dan secret berikut.
@@ -62,14 +62,20 @@ Penggunakan Docker container menguntungkan karena dapat di-deploy dimana saja de
   
 ### Running di Local Computer
 1. Buka terminal, cd kedalam directory Lab 4.
-2. create python virtual environment, berikut adalah contoh jika anda ingin membuat virtual environment bernama 'genai' 
-```python -m venv genai```  
+2. create python virtual environment, berikut adalah contoh jika anda ingin membuat virtual environment bernama 'genai'  
+```
+python -m venv genai
+```  
 
 3. aktifkan python virtual environment yang baru saja dibuat  
-```source genai\bin\activate```  
+```
+source genai\bin\activate
+```  
 
 4. install dependencies yang ada di requirements.txt  
-```python -m pip install -r requirements.txt```  
+```
+python -m pip install -r requirements.txt
+```  
 
 5. export secret dan credentials dengan mengganti semua value yang ada didalam double quote dengan credentials anda. Paste command tersebut di terminal.  
 ```
@@ -96,7 +102,9 @@ python main.py
 
 1. Buka terminal, cd kedalam directory Lab 4.
 2. Build docker image menggunakan docker file  
-```docker build -t qna .```  
+```
+docker build -t qna .
+```  
 3. Run docker container dengan menjadikan credentials dan secret sebagai environment variable.
 ```
 docker run --env "WX_API_KEY=IAM-APIKEY" \
